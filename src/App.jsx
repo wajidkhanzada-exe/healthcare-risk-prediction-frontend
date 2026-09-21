@@ -6,35 +6,35 @@ import Auth from './Auth'
 const API_BASE = "http://127.0.0.1:5000"
 
 // -----------------------------------------------------------------------
-// FIELD CATALOG — the single source of truth for the entire form.
-//
-// Each field is asked ONCE, grouped by medical category (not by disease).
-// "targets" describes how that one answer gets written into each disease's
-// prediction payload, including any unit/format conversion needed.
-//
-// NOTE on ckd.Gender: assumed convention is Female -> 0, Male -> 1
-// (sklearn LabelEncoder's default alphabetical mapping). Verify this
-// against your own training notebook before trusting CKD gender-based
-// predictions.
+// FIELD MAPPINGS
 // -----------------------------------------------------------------------
 
 function mapGenderToHeart(gender) {
-  // The Heart Failure dataset only contains Male/Female. "Other" has no
-  // equivalent in that training data, so it falls back to Female.
+  // Heart dataset uses M/F.
+  // "Other" has no direct equivalent, so it falls back to F.
   return gender === "Male" ? "M" : "F"
 }
 
 function mapGenderToCKD(gender) {
-  // ASSUMED convention — verify against your notebook.
+  // Assumed CKD mapping:
+  // Female -> 0
+  // Male -> 1
+  //
+  // IMPORTANT:
+  // Verify this against the CKD training notebook before final production use.
   if (gender === "Male") return "1"
   return "0"
 }
 
 function mapSmokingToCKD(smokingHistory) {
-  // The CKD dataset only has a binary current-smoker flag.
-  // Only an active "current" smoker maps to Yes.
+  // CKD dataset uses a binary smoking flag.
+  // Only current smoker is mapped to 1.
   return smokingHistory === "current" ? "1" : "0"
 }
+
+// -----------------------------------------------------------------------
+// FIELD CATALOG
+// -----------------------------------------------------------------------
 
 const FIELD_CATALOG = [
   {
@@ -43,7 +43,8 @@ const FIELD_CATALOG = [
       {
         id: "fullName",
         label: "Full Name",
-        description: "Used to label your report. Not used in any risk calculation.",
+        description:
+          "Used to label your report. Not used in any risk calculation.",
         type: "text",
         required: true,
         targets: []
@@ -58,9 +59,18 @@ const FIELD_CATALOG = [
         min: 1,
         max: 120,
         targets: [
-          { disease: "diabetes", field: "age" },
-          { disease: "heart", field: "Age" },
-          { disease: "ckd", field: "Age" }
+          {
+            disease: "diabetes",
+            field: "age"
+          },
+          {
+            disease: "heart",
+            field: "Age"
+          },
+          {
+            disease: "ckd",
+            field: "Age"
+          }
         ]
       },
 
@@ -228,14 +238,12 @@ const FIELD_CATALOG = [
         min: 40,
         max: 400,
         targets: [
-          // Heart model only needs a Yes/No flag for ">120"
           {
             disease: "heart",
             field: "FastingBS",
             transform: v =>
               parseFloat(v) > 120 ? "1" : "0"
           },
-
           {
             disease: "ckd",
             field: "FastingBloodSugar"
@@ -344,14 +352,9 @@ const FIELD_CATALOG = [
     ]
   },
 
-  // -----------------------------------------------------------------------
+  // ---------------------------------------------------------------------
   // KIDNEY FUNCTION LABS
-  //
-  // Sodium and Potassium are REQUIRED because the CKD backend currently
-  // requires:
-  //   SerumElectrolytesSodium
-  //   SerumElectrolytesPotassium
-  // -----------------------------------------------------------------------
+  // ---------------------------------------------------------------------
 
   {
     category: "Kidney Function Labs",
@@ -536,6 +539,10 @@ const FIELD_CATALOG = [
     ]
   },
 
+  // ---------------------------------------------------------------------
+  // SYMPTOMS
+  // ---------------------------------------------------------------------
+
   {
     category: "Symptoms",
     fields: [
@@ -686,12 +693,17 @@ const FIELD_CATALOG = [
     ]
   },
 
+  // ---------------------------------------------------------------------
+  // MEDICAL HISTORY
+  // ---------------------------------------------------------------------
+
   {
     category: "Medical History",
     fields: [
       {
         id: "hasHypertension",
-        label: "Do you personally have hypertension (high blood pressure)?",
+        label:
+          "Do you personally have hypertension (high blood pressure)?",
         description:
           "Your own diagnosis, not a family member's.",
         type: "select",
@@ -714,7 +726,8 @@ const FIELD_CATALOG = [
 
       {
         id: "hasHeartDisease",
-        label: "Do you have a personal history of heart disease?",
+        label:
+          "Do you have a personal history of heart disease?",
         description: "",
         type: "select",
         required: true,
@@ -736,7 +749,8 @@ const FIELD_CATALOG = [
 
       {
         id: "previousAKI",
-        label: "Have you had a previous acute kidney injury?",
+        label:
+          "Have you had a previous acute kidney injury?",
         description:
           "Optional.",
         type: "select",
@@ -759,7 +773,8 @@ const FIELD_CATALOG = [
 
       {
         id: "utiHistory",
-        label: "History of urinary tract infections?",
+        label:
+          "History of urinary tract infections?",
         description:
           "Optional.",
         type: "select",
@@ -782,7 +797,8 @@ const FIELD_CATALOG = [
 
       {
         id: "familyKidneyDisease",
-        label: "Family history of kidney disease?",
+        label:
+          "Family history of kidney disease?",
         description:
           "Optional.",
         type: "select",
@@ -805,7 +821,8 @@ const FIELD_CATALOG = [
 
       {
         id: "familyHypertension",
-        label: "Family history of hypertension?",
+        label:
+          "Family history of hypertension?",
         description:
           "Optional.",
         type: "select",
@@ -828,7 +845,8 @@ const FIELD_CATALOG = [
 
       {
         id: "familyDiabetes",
-        label: "Family history of diabetes?",
+        label:
+          "Family history of diabetes?",
         description:
           "Optional.",
         type: "select",
@@ -852,13 +870,17 @@ const FIELD_CATALOG = [
   }
 ]
 
-
-// Placeholder hints
-
+// -----------------------------------------------------------------------
+// PLACEHOLDER HINTS
+// -----------------------------------------------------------------------
 
 const PLACEHOLDER_HINTS = {
   fullName: "e.g. Ahmed Khan",
-  age: "e.g. 45"
+  age: "e.g. 45",
+  fatigueLevel: "0 (none) to 10 (severe)",
+  nauseaLevel: "0 (none) to 10 (severe)",
+  muscleCrampsLevel: "0 (none) to 10 (severe)",
+  itchingLevel: "0 (none) to 10 (severe)"
 }
 
 function getPlaceholder(field) {
@@ -866,24 +888,27 @@ function getPlaceholder(field) {
     return PLACEHOLDER_HINTS[field.id]
   }
 
-  if (field.min !== undefined && field.max !== undefined) {
+  if (
+    field.min !== undefined &&
+    field.max !== undefined
+  ) {
     return `Range: ${field.min}-${field.max}`
   }
 
   return ""
 }
 
-
-// Flattened lookup used for building the submission payload
-
+// -----------------------------------------------------------------------
+// ALL FIELDS
+// -----------------------------------------------------------------------
 
 const ALL_FIELDS = FIELD_CATALOG.flatMap(
   group => group.fields
 )
 
-
-// Build prediction payload
-
+// -----------------------------------------------------------------------
+// BUILD PREDICTION PAYLOAD
+// -----------------------------------------------------------------------
 
 function buildPayload(values) {
   const payload = {
@@ -900,8 +925,10 @@ function buildPayload(values) {
         ? field.defaultValue
         : raw
 
-    // Truly unanswered optional field
-    if (value === undefined || value === "") {
+    if (
+      value === undefined ||
+      value === ""
+    ) {
       continue
     }
 
@@ -920,9 +947,9 @@ function buildPayload(values) {
   return payload
 }
 
-
-// Validate required fields
-
+// -----------------------------------------------------------------------
+// VALIDATE REQUIRED FIELDS
+// -----------------------------------------------------------------------
 
 function missingRequiredFields(values) {
   return ALL_FIELDS.filter(
@@ -935,45 +962,88 @@ function missingRequiredFields(values) {
   )
 }
 
-
-// Renders simple Markdown (## headers, * bullets, plain paragraphs) as
-// HTML, without pulling in a full markdown library. Used for the
-// Gemini-generated ai_explanation text.
+// -----------------------------------------------------------------------
+// SIMPLE MARKDOWN RENDERER
+// -----------------------------------------------------------------------
 
 function MarkdownLite({ text }) {
-  const lines = text.split("\n").filter(l => l.trim() !== "")
+  if (!text) {
+    return null
+  }
+
+  const lines = String(text)
+    .split("\n")
+    .filter(line => line.trim() !== "")
 
   return (
-    <div className="text-sm space-y-1">
-      {lines.map((line, i) => {
+    <div className="text-sm space-y-1.5 text-slate-700">
+      {lines.map((line, index) => {
         const trimmed = line.trim()
+
         if (trimmed.startsWith("## ")) {
-          return <p key={i} className="font-semibold mt-2">{trimmed.slice(3)}</p>
+          return (
+            <p
+              key={index}
+              className="font-semibold mt-3 text-slate-800"
+            >
+              {trimmed.slice(3)}
+            </p>
+          )
         }
-        if (trimmed.startsWith("* ") || trimmed.startsWith("- ")) {
-          return <p key={i} className="ml-3">• {trimmed.slice(2).replace(/\*\*/g, "")}</p>
+
+        if (
+          trimmed.startsWith("* ") ||
+          trimmed.startsWith("- ")
+        ) {
+          return (
+            <p
+              key={index}
+              className="ml-3"
+            >
+              • {trimmed.slice(2).replace(/\*\*/g, "")}
+            </p>
+          )
         }
-        return <p key={i}>{trimmed.replace(/\*\*/g, "")}</p>
+
+        return (
+          <p key={index}>
+            {trimmed.replace(/\*\*/g, "")}
+          </p>
+        )
       })}
     </div>
   )
 }
 
-// Main App
+// -----------------------------------------------------------------------
+// MAIN APP
+// -----------------------------------------------------------------------
 
 function App() {
   const [session, setSession] = useState(null)
   const [checkingSession, setCheckingSession] = useState(true)
+
   const [backendUp, setBackendUp] = useState(null)
+
   const [values, setValues] = useState({})
   const [result, setResult] = useState(null)
+
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
+
   const [extracting, setExtracting] = useState(false)
   const [extractMessage, setExtractMessage] = useState(null)
 
+  // History
+  const [activeTab, setActiveTab] = useState("new")
+  const [history, setHistory] = useState([])
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [historyError, setHistoryError] = useState(null)
+  const [selectedHistoryReport, setSelectedHistoryReport] =
+    useState(null)
+
   // ---------------------------------------------------------------------
-  // Check backend
+  // CHECK BACKEND
   // ---------------------------------------------------------------------
 
   useEffect(() => {
@@ -983,31 +1053,79 @@ function App() {
       .catch(() => setBackendUp(false))
   }, [])
 
-  useEffect(() => {
-    // On load, check if a session already exists (e.g. page was refreshed
-    // while logged in).
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session)
-      setCheckingSession(false)
-    })
+  // ---------------------------------------------------------------------
+  // SUPABASE SESSION
+  // ---------------------------------------------------------------------
 
-    // Keep session state in sync with login/logout/token refresh events.
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession)
-    })
+  useEffect(() => {
+    let mounted = true
+
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (!mounted) return
+
+        setSession(data.session)
+        setCheckingSession(false)
+      })
+      .catch(error => {
+        console.error("Session error:", error)
+
+        if (mounted) {
+          setSession(null)
+          setCheckingSession(false)
+        }
+      })
+
+    const {
+      data: authListener
+    } = supabase.auth.onAuthStateChange(
+      (_event, newSession) => {
+        setSession(newSession)
+      }
+    )
 
     return () => {
-      authListener.subscription.unsubscribe()
+      mounted = false
+      authListener?.subscription?.unsubscribe()
     }
   }, [])
 
   // ---------------------------------------------------------------------
-  // Handle field change
+  // LOAD HISTORY WHEN HISTORY TAB IS OPENED
+  // ---------------------------------------------------------------------
+
+  useEffect(() => {
+    if (
+      session &&
+      activeTab === "history"
+    ) {
+      loadHistory()
+    }
+  }, [session, activeTab])
+
+  // ---------------------------------------------------------------------
+  // SIGN OUT
   // ---------------------------------------------------------------------
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut()
+    try {
+      await supabase.auth.signOut()
+
+      setSession(null)
+      setResult(null)
+      setValues({})
+      setHistory([])
+      setSelectedHistoryReport(null)
+      setActiveTab("new")
+    } catch (err) {
+      console.error("Sign out error:", err)
+    }
   }
+
+  // ---------------------------------------------------------------------
+  // FIELD CHANGE
+  // ---------------------------------------------------------------------
 
   const handleChange = (fieldId, value) => {
     setValues(prev => ({
@@ -1017,55 +1135,97 @@ function App() {
   }
 
   // ---------------------------------------------------------------------
-  // Handle blood report PDF/image upload -> auto-fill fields
+  // BLOOD REPORT UPLOAD / EXTRACTION
   // ---------------------------------------------------------------------
 
-  const handleFileUpload = async (e) => {
-    const file = e.target.files[0]
-    if (!file) return
+  const handleFileUpload = async event => {
+    const file = event.target.files?.[0]
+
+    if (!file) {
+      return
+    }
+
+    if (!session?.access_token) {
+      setExtractMessage(
+        "Please login again before uploading a report."
+      )
+      return
+    }
 
     setExtracting(true)
     setExtractMessage(null)
 
     const formData = new FormData()
+
     formData.append("report", file)
 
     try {
-      const res = await axios.post(`${API_BASE}/extract-report`, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-          Authorization: `Bearer ${session.access_token}`
+      const response = await axios.post(
+        `${API_BASE}/extract-report`,
+        formData,
+        {
+          headers: {
+            Authorization:
+              `Bearer ${session.access_token}`
+          }
         }
-      })
+      )
 
-      const extracted = res.data.extracted_fields
+      const extracted =
+        response.data?.extracted_fields || {}
 
-      if (!extracted || Object.keys(extracted).length === 0) {
-        setExtractMessage("Report se koi field nahi mil saki. Manually fill kar lo.")
+      if (
+        !extracted ||
+        Object.keys(extracted).length === 0
+      ) {
+        setExtractMessage(
+          "Report se koi field nahi mil saki. Manually fill kar lo."
+        )
       } else {
-        setValues(prev => ({ ...prev, ...extracted }))
+        setValues(prev => ({
+          ...prev,
+          ...extracted
+        }))
+
         setExtractMessage(
           `${Object.keys(extracted).length} fields report se bhar diye gaye. Please neeche review karo.`
         )
       }
     } catch (err) {
-      console.error("Extraction error:", err)
-      setExtractMessage("Extraction fail hui. Manually fill karo.")
+      console.error(
+        "Extraction error:",
+        err
+      )
+
+      setExtractMessage(
+        err.response?.data?.error ||
+        "Extraction fail hui. Manually fill karo."
+      )
     } finally {
       setExtracting(false)
+
+      // Allows uploading the same file again.
+      event.target.value = ""
     }
   }
 
   // ---------------------------------------------------------------------
-  // Submit prediction request
+  // SUBMIT REPORT
   // ---------------------------------------------------------------------
 
   const handleSubmit = async () => {
     setError(null)
     setResult(null)
 
-    // Validate required fields
-    const missing = missingRequiredFields(values)
+    if (!session?.access_token) {
+      setError(
+        "Your login session has expired. Please login again."
+      )
+      return
+    }
+
+    const missing =
+      missingRequiredFields(values)
 
     if (missing.length > 0) {
       setError(
@@ -1079,27 +1239,53 @@ function App() {
     setLoading(true)
 
     try {
-      const payload = buildPayload(values)
+      const predictionPayload =
+        buildPayload(values)
 
-      console.log("Prediction payload:", payload)
+      // IMPORTANT:
+      // Backend /report/full expects fullName and age
+      // at the top level so Supabase can save patient_name
+      // and patient_age.
+      const payload = {
+        fullName: values.fullName,
+        age: values.age,
+        gender: values.gender,
+        ...predictionPayload
+      }
 
-      // /report/full runs the ML prediction AND generates the RAG+Gemini
-      // explanation/recommendations for each disease in one call.
-      const res = await axios.post(
+      console.log(
+        "Report payload:",
+        payload
+      )
+
+      const response = await axios.post(
         `${API_BASE}/report/full`,
         payload,
         {
-          headers: { Authorization: `Bearer ${session.access_token}` }
+          headers: {
+            Authorization:
+              `Bearer ${session.access_token}`
+          }
         }
       )
 
-      setResult(res.data)
+      setResult(response.data)
+
+      // Automatically refresh history after
+      // successfully generating/saving a report.
+      if (activeTab === "history") {
+        await loadHistory()
+      }
     } catch (err) {
-      console.error("Prediction error:", err)
+      console.error(
+        "Report generation error:",
+        err
+      )
 
       setError(
         err.response?.data?.error ||
-        "Something went wrong. Check the browser console for details."
+        err.response?.data?.message ||
+        "Something went wrong. Check the browser console and Flask terminal."
       )
     } finally {
       setLoading(false)
@@ -1107,127 +1293,356 @@ function App() {
   }
 
   // ---------------------------------------------------------------------
-  // Backend unavailable
+  // LOAD REPORT HISTORY
+  // ---------------------------------------------------------------------
+
+  const loadHistory = async () => {
+    if (!session?.user?.id) {
+      return
+    }
+
+    setHistoryLoading(true)
+    setHistoryError(null)
+
+    try {
+      const {
+        data,
+        error: supabaseError
+      } = await supabase
+        .from("reports")
+        .select(`
+          id,
+          user_id,
+          patient_name,
+          patient_age,
+          report_data,
+          created_at
+        `)
+        .eq(
+          "user_id",
+          session.user.id
+        )
+        .order(
+          "created_at",
+          {
+            ascending: false
+          }
+        )
+
+      if (supabaseError) {
+        throw supabaseError
+      }
+
+      setHistory(data || [])
+    } catch (err) {
+      console.error(
+        "History loading error:",
+        err
+      )
+
+      setHistoryError(
+        err.message ||
+        "Previous reports load nahi ho sake."
+      )
+    } finally {
+      setHistoryLoading(false)
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // OPEN HISTORY REPORT
+  // ---------------------------------------------------------------------
+
+  const openHistoryReport = report => {
+    setSelectedHistoryReport(report)
+  }
+
+  // ---------------------------------------------------------------------
+  // BACKEND / SESSION STATES
   // ---------------------------------------------------------------------
 
   if (checkingSession) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-stone-50">
-        <p className="text-slate-400 text-sm">Loading...</p>
-      </div>
-    )
-  }
-
-  if (!session) {
-    return <Auth onLoginSuccess={(newSession) => setSession(newSession)} />
-  }
-
-  if (backendUp === false) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-stone-50">
-        <p className="text-slate-600">
-          Can't reach the server. Is the Flask backend running?
+        <p className="text-slate-400 text-sm">
+          Loading...
         </p>
       </div>
     )
   }
 
+  if (!session) {
+    return (
+      <Auth
+        onLoginSuccess={newSession =>
+          setSession(newSession)
+        }
+      />
+    )
+  }
+
+  if (backendUp === false) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-stone-50 px-6">
+        <div className="bg-white border border-red-200 rounded-lg p-6 max-w-md text-center">
+          <p className="font-medium text-slate-800">
+            Backend unavailable
+          </p>
+
+          <p className="text-sm text-slate-500 mt-2">
+            Can't reach the Flask server.
+            Please make sure your backend is running.
+          </p>
+
+          <p className="text-xs text-slate-400 mt-3">
+            {API_BASE}
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   // ---------------------------------------------------------------------
-  // Main UI
+  // MAIN UI
   // ---------------------------------------------------------------------
 
   return (
-    <div className="min-h-screen bg-stone-50">
+    <>
+      <style>
+        {`
+          @media print {
+            body {
+              background: white !important;
+            }
 
-      <header className="border-b border-stone-200 bg-white">
-        <div className="max-w-2xl mx-auto px-6 py-8">
+            .no-print {
+              display: none !important;
+            }
 
-          <div className="flex items-center gap-3 mb-1 justify-between">
-            <h1 className="text-2xl font-semibold text-slate-800">
-              Health Risk Assessment
-            </h1>
-            <button
-              onClick={handleSignOut}
-              className="ml-auto text-sm text-slate-500 hover:text-slate-700"
-            >
-              Sign out
-            </button>
+            .printable-report {
+              display: block !important;
+              width: 100% !important;
+              max-width: 100% !important;
+              margin: 0 !important;
+              padding: 0 !important;
+            }
+
+            .printable-report * {
+              print-color-adjust: exact;
+              -webkit-print-color-adjust: exact;
+            }
+
+            @page {
+              size: A4;
+              margin: 12mm;
+            }
+          }
+        `}
+      </style>
+
+      <div className="min-h-screen bg-stone-50">
+
+        {/* ------------------------------------------------------------- */}
+        {/* HEADER */}
+        {/* ------------------------------------------------------------- */}
+
+        <header className="border-b border-stone-200 bg-white no-print">
+          <div className="max-w-2xl mx-auto px-6 py-7">
+
+            <div className="flex items-center gap-3">
+
+              <div>
+                <h1 className="text-2xl font-semibold text-slate-800">
+                  Health Risk Assessment
+                </h1>
+
+                <p className="text-slate-500 mt-1 text-sm">
+                  Answer what you can from a recent blood report
+                  or your own knowledge. Fields marked with a dot
+                  are required; everything else is optional.
+                </p>
+              </div>
+
+              <button
+                onClick={handleSignOut}
+                className="ml-auto text-sm text-slate-500 hover:text-slate-700 whitespace-nowrap"
+              >
+                Sign out
+              </button>
+
+            </div>
+
+            {/* --------------------------------------------------------- */}
+            {/* TABS */}
+            {/* --------------------------------------------------------- */}
+
+            <div className="flex gap-2 mt-6">
+
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("new")
+                  setSelectedHistoryReport(null)
+                }}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  activeTab === "new"
+                    ? "bg-teal-700 text-white"
+                    : "bg-stone-100 text-slate-600 hover:bg-stone-200"
+                }`}
+              >
+                New Assessment
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("history")
+                  setSelectedHistoryReport(null)
+                }}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  activeTab === "history"
+                    ? "bg-teal-700 text-white"
+                    : "bg-stone-100 text-slate-600 hover:bg-stone-200"
+                }`}
+              >
+                History
+              </button>
+
+            </div>
+
           </div>
+        </header>
 
-          <p className="text-slate-500 mt-1 text-sm">
-            Answer what you can from a recent blood report or your own
-            knowledge. Fields marked with a dot are required; everything
-            else is optional.
-          </p>
+        {/* ------------------------------------------------------------- */}
+        {/* NEW ASSESSMENT */}
+        {/* ------------------------------------------------------------- */}
 
-        </div>
-      </header>
+        {activeTab === "new" && (
+          <main className="max-w-2xl mx-auto px-6 py-8">
 
-      <main className="max-w-2xl mx-auto px-6 py-8">
+            {/* --------------------------------------------------------- */}
+            {/* BLOOD REPORT UPLOAD */}
+            {/* --------------------------------------------------------- */}
 
-        <div className="bg-teal-50 border border-teal-200 rounded-md p-6 mb-8">
-          <h2 className="text-base font-semibold text-slate-800 mb-1">
-            Option: Apni Blood Report Upload Karo
-          </h2>
-          <p className="text-sm text-slate-500 mb-3">
-            Upload your lab reports one at a time — CBC, lipid panel, HbA1c,
-            or kidney panel. Each upload adds to your existing data without
-            erasing what's already filled in
-          </p>
-          <input
-            type="file"
-            accept=".pdf,image/*"
-            onChange={handleFileUpload}
-            disabled={extracting}
-            className="text-sm"
-          />
-          {extracting && (
-            <p className="text-sm text-teal-700 mt-2">Report padh rahe hain...</p>
-          )}
-          {extractMessage && (
-            <p className="text-sm text-slate-700 mt-2">{extractMessage}</p>
-          )}
-        </div>
+            <div className="bg-teal-50 border border-teal-200 rounded-md p-6 mb-8 no-print">
 
-        {FIELD_CATALOG.map(group => (
-          <CategorySection
-            key={group.category}
-            group={group}
-            values={values}
-            onChange={handleChange}
-          />
-        ))}
+              <h2 className="text-base font-semibold text-slate-800 mb-1">
+                Option: Upload a blood report (PDF or image)
+              </h2>
 
-        <button
-          onClick={handleSubmit}
-          disabled={loading}
-          className="w-full bg-teal-700 text-white font-medium py-3 rounded-md hover:bg-teal-800 disabled:bg-stone-300 transition-colors"
-        >
-          {loading
-            ? "Calculating..."
-            : "Get My Risk Report"}
-        </button>
+              <p className="text-sm text-slate-500 mb-3">
+                Upload your lab reports one at a time —
+                CBC, lipid panel, HbA1c, or kidney panel.
+                Extracted values will be added to your form.
+              </p>
 
-        {error && (
-          <p className="text-red-600 mt-4 text-sm">
-            {error}
-          </p>
+              <input
+                type="file"
+                accept=".pdf,image/*"
+                onChange={handleFileUpload}
+                disabled={extracting}
+                className="text-sm block w-full"
+              />
+
+              {extracting && (
+                <p className="text-sm text-teal-700 mt-3">
+                  Report padh rahe hain...
+                </p>
+              )}
+
+              {extractMessage && (
+                <p className="text-sm text-slate-700 mt-3">
+                  {extractMessage}
+                </p>
+              )}
+
+            </div>
+
+            {/* --------------------------------------------------------- */}
+            {/* FORM */}
+            {/* --------------------------------------------------------- */}
+
+            <div className="no-print">
+
+              {FIELD_CATALOG.map(group => (
+                <CategorySection
+                  key={group.category}
+                  group={group}
+                  values={values}
+                  onChange={handleChange}
+                />
+              ))}
+
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={loading}
+                className="w-full bg-teal-700 text-white font-medium py-3 rounded-md hover:bg-teal-800 disabled:bg-stone-300 transition-colors"
+              >
+                {loading
+                  ? "Generating Risk Report..."
+                  : "Get My Risk Report"}
+              </button>
+
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 rounded-md p-4 mt-4">
+                  <p className="text-sm font-medium">
+                    Report generation failed
+                  </p>
+
+                  <p className="text-sm mt-1">
+                    {error}
+                  </p>
+                </div>
+              )}
+
+            </div>
+
+            {/* --------------------------------------------------------- */}
+            {/* CURRENT RESULT */}
+            {/* --------------------------------------------------------- */}
+
+            {result && (
+              <ResultReport
+                result={result}
+                name={values.fullName}
+                patientAge={values.age}
+              />
+            )}
+
+          </main>
         )}
 
-        {result && (
-          <ResultReport
-            result={result}
-            name={values.fullName}
-          />
+        {/* ------------------------------------------------------------- */}
+        {/* HISTORY */}
+        {/* ------------------------------------------------------------- */}
+
+        {activeTab === "history" && (
+          <main className="max-w-2xl mx-auto px-6 py-8">
+
+            <HistoryView
+              history={history}
+              loading={historyLoading}
+              error={historyError}
+              selectedReport={selectedHistoryReport}
+              onSelectReport={
+                openHistoryReport
+              }
+              onBack={() =>
+                setSelectedHistoryReport(null)
+              }
+            />
+
+          </main>
         )}
 
-      </main>
-    </div>
+      </div>
+    </>
   )
 }
 
 // -----------------------------------------------------------------------
-// Category Section
+// CATEGORY SECTION
 // -----------------------------------------------------------------------
 
 function CategorySection({
@@ -1254,7 +1669,11 @@ function CategorySection({
           <FieldInput
             key={field.id}
             field={field}
-            value={values[field.id] || ""}
+            value={
+              values[field.id] !== undefined
+                ? values[field.id]
+                : ""
+            }
             onChange={value =>
               onChange(field.id, value)
             }
@@ -1262,12 +1681,13 @@ function CategorySection({
         ))}
 
       </div>
+
     </section>
   )
 }
 
 // -----------------------------------------------------------------------
-// Field Input
+// FIELD INPUT
 // -----------------------------------------------------------------------
 
 function FieldInput({
@@ -1280,7 +1700,9 @@ function FieldInput({
 
       <label className="flex items-baseline gap-1.5 text-sm font-medium text-slate-700 mb-1">
 
-        {field.label}
+        <span>
+          {field.label}
+        </span>
 
         {field.required && (
           <span
@@ -1304,8 +1726,8 @@ function FieldInput({
         <select
           className="w-full border border-stone-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-600"
           value={value}
-          onChange={e =>
-            onChange(e.target.value)
+          onChange={event =>
+            onChange(event.target.value)
           }
         >
 
@@ -1313,12 +1735,13 @@ function FieldInput({
             Select...
           </option>
 
-          {field.options.map(opt => (
+          {field.options.map(option => (
             <option
-              key={opt}
-              value={opt}
+              key={option}
+              value={option}
             >
-              {field.optionLabels?.[opt] || opt}
+              {field.optionLabels?.[option] ||
+                option}
             </option>
           ))}
 
@@ -1332,10 +1755,10 @@ function FieldInput({
           min={field.min}
           max={field.max}
           placeholder={getPlaceholder(field)}
-          className="w-full border border-stone-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-600"
+          className="w-full border border-stone-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-600"
           value={value}
-          onChange={e =>
-            onChange(e.target.value)
+          onChange={event =>
+            onChange(event.target.value)
           }
         />
 
@@ -1346,24 +1769,309 @@ function FieldInput({
 }
 
 // -----------------------------------------------------------------------
-// Result Report
+// HISTORY VIEW
+// -----------------------------------------------------------------------
+
+function HistoryView({
+  history,
+  loading,
+  error,
+  selectedReport,
+  onSelectReport,
+  onBack
+}) {
+  // ---------------------------------------------------------------
+  // SELECTED REPORT
+  // ---------------------------------------------------------------
+
+  if (selectedReport) {
+    let reportData =
+      selectedReport.report_data
+
+    if (
+      typeof reportData === "string"
+    ) {
+      try {
+        reportData = JSON.parse(reportData)
+      } catch (parseError) {
+        console.error(
+          "History report JSON parse error:",
+          parseError
+        )
+
+        reportData = null
+      }
+    }
+
+    if (!reportData) {
+      return (
+        <div>
+
+          <button
+            type="button"
+            onClick={onBack}
+            className="text-sm text-teal-700 hover:text-teal-900 mb-5 no-print"
+          >
+            ← Back to History
+          </button>
+
+          <div className="bg-red-50 border border-red-200 rounded-md p-4">
+            <p className="text-sm text-red-700">
+              This report could not be read.
+            </p>
+          </div>
+
+        </div>
+      )
+    }
+
+    return (
+      <div>
+
+        <div className="no-print mb-5 flex items-center justify-between gap-3">
+
+          <button
+            type="button"
+            onClick={onBack}
+            className="text-sm text-teal-700 hover:text-teal-900"
+          >
+            ← Back to History
+          </button>
+
+        </div>
+
+        <ResultReport
+          result={reportData}
+          name={selectedReport.patient_name}
+          patientAge={
+            selectedReport.patient_age
+          }
+          createdAt={
+            selectedReport.created_at
+          }
+        />
+
+      </div>
+    )
+  }
+
+  // ---------------------------------------------------------------
+  // LOADING
+  // ---------------------------------------------------------------
+
+  if (loading) {
+    return (
+      <div className="bg-white border border-stone-200 rounded-lg p-6 text-center">
+
+        <p className="text-sm text-slate-500">
+          Loading your previous reports...
+        </p>
+
+      </div>
+    )
+  }
+
+  // ---------------------------------------------------------------
+  // ERROR
+  // ---------------------------------------------------------------
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-5">
+
+        <p className="font-medium text-red-800">
+          Could not load history
+        </p>
+
+        <p className="text-sm text-red-700 mt-1">
+          {error}
+        </p>
+
+        <p className="text-xs text-red-600 mt-3">
+          Agar Supabase RLS error aa raha hai to reports
+          table ke SELECT policy ko check karo.
+        </p>
+
+      </div>
+    )
+  }
+
+  // ---------------------------------------------------------------
+  // EMPTY HISTORY
+  // ---------------------------------------------------------------
+
+  if (!history || history.length === 0) {
+    return (
+      <div className="bg-white border border-stone-200 rounded-lg p-8 text-center">
+
+        <p className="font-medium text-slate-800">
+          No previous reports
+        </p>
+
+        <p className="text-sm text-slate-500 mt-2">
+          Abhi tak koi saved report nahi mili.
+        </p>
+
+      </div>
+    )
+  }
+
+  // ---------------------------------------------------------------
+  // HISTORY LIST
+  // ---------------------------------------------------------------
+
+  return (
+    <div>
+
+      <div className="mb-5">
+
+        <h2 className="text-lg font-semibold text-slate-800">
+          Previous Reports
+        </h2>
+
+        <p className="text-sm text-slate-500 mt-1">
+          Your previously generated risk reports.
+        </p>
+
+      </div>
+
+      <div className="space-y-3">
+
+        {history.map(report => {
+
+          let reportData =
+            report.report_data
+
+          if (
+            typeof reportData === "string"
+          ) {
+            try {
+              reportData =
+                JSON.parse(reportData)
+            } catch {
+              reportData = null
+            }
+          }
+
+          const summary =
+            reportData?.summary
+
+          const highestDisease =
+            summary?.highest_risk_disease ||
+            "Risk report"
+
+          const highestCategory =
+            summary?.highest_risk_category ||
+            "N/A"
+
+          const createdDate =
+            report.created_at
+              ? new Date(
+                  report.created_at
+                ).toLocaleString()
+              : "Unknown date"
+
+          return (
+            <div
+              key={report.id}
+              className="bg-white border border-stone-200 rounded-lg p-5"
+            >
+
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+
+                <div>
+
+                  <p className="font-medium text-slate-800">
+                    {report.patient_name ||
+                      "Unnamed Patient"}
+                  </p>
+
+                  {report.patient_age !==
+                    null &&
+                    report.patient_age !==
+                      undefined && (
+                      <p className="text-xs text-slate-500 mt-1">
+                        Age:{" "}
+                        {report.patient_age}
+                      </p>
+                    )}
+
+                  <p className="text-xs text-slate-400 mt-1">
+                    {createdDate}
+                  </p>
+
+                  <div className="mt-3">
+
+                    <p className="text-xs text-slate-500">
+                      Highest Risk
+                    </p>
+
+                    <p className="text-sm font-medium text-slate-700">
+                      {highestDisease}
+                    </p>
+
+                    <p className="text-xs text-slate-500">
+                      Category:{" "}
+                      {highestCategory}
+                    </p>
+
+                  </div>
+
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    onSelectReport(report)
+                  }
+                  className="bg-teal-700 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-teal-800 transition-colors whitespace-nowrap"
+                >
+                  View Report
+                </button>
+
+              </div>
+
+            </div>
+          )
+        })}
+
+      </div>
+
+    </div>
+  )
+}
+
+// -----------------------------------------------------------------------
+// RESULT REPORT
 // -----------------------------------------------------------------------
 
 function ResultReport({
   result,
-  name
+  name,
+  patientAge,
+  createdAt
 }) {
   const categoryStyle = {
-    Low: "bg-emerald-50 border-emerald-300 text-emerald-800",
-    Medium: "bg-amber-50 border-amber-300 text-amber-800",
-    High: "bg-rose-50 border-rose-300 text-rose-800"
+    Low:
+      "bg-emerald-50 border-emerald-300 text-emerald-800",
+
+    Medium:
+      "bg-amber-50 border-amber-300 text-amber-800",
+
+    High:
+      "bg-rose-50 border-rose-300 text-rose-800"
   }
 
-  // Safety check in case API returns an error structure
-  // without a complete summary/results object.
-  if (!result || !result.results) {
+  // ---------------------------------------------------------------
+  // SAFETY CHECK
+  // ---------------------------------------------------------------
+
+  if (
+    !result ||
+    !result.results
+  ) {
     return (
-      <div className="mt-10">
+      <div className="mt-10 printable-report">
 
         <div className="bg-red-50 border border-red-300 text-red-800 rounded-md p-4">
 
@@ -1383,14 +2091,67 @@ function ResultReport({
     )
   }
 
-  return (
-    <div className="mt-10">
+  // ---------------------------------------------------------------
+  // PRINT / SAVE PDF
+  // ---------------------------------------------------------------
 
-      <h2 className="text-lg font-semibold text-slate-800 mb-4">
-        {name
-          ? `${name}'s Risk Report`
-          : "Risk Report"}
-      </h2>
+  const handlePrint = () => {
+    window.print()
+  }
+
+  return (
+    <div
+      id="printable-report"
+      className="mt-10 printable-report"
+    >
+
+      {/* ----------------------------------------------------------- */}
+      {/* REPORT HEADER */}
+      {/* ----------------------------------------------------------- */}
+
+      <div className="flex items-start justify-between gap-4 mb-4">
+
+        <div>
+
+          <h2 className="text-lg font-semibold text-slate-800">
+            {name
+              ? `${name}'s Risk Report`
+              : "Risk Report"}
+          </h2>
+
+          {patientAge !==
+            undefined &&
+            patientAge !== null &&
+            patientAge !== "" && (
+              <p className="text-xs text-slate-500 mt-1">
+                Age: {patientAge}
+              </p>
+            )}
+
+          {createdAt && (
+            <p className="text-xs text-slate-400 mt-1">
+              Report Date:{" "}
+              {new Date(
+                createdAt
+              ).toLocaleString()}
+            </p>
+          )}
+
+        </div>
+
+        <button
+          type="button"
+          onClick={handlePrint}
+          className="no-print bg-slate-800 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-slate-900 transition-colors whitespace-nowrap"
+        >
+          Print / Save PDF
+        </button>
+
+      </div>
+
+      {/* ----------------------------------------------------------- */}
+      {/* SUMMARY */}
+      {/* ----------------------------------------------------------- */}
 
       {result.summary && (
         <div className="bg-slate-800 text-white rounded-md p-4 mb-4">
@@ -1408,98 +2169,314 @@ function ResultReport({
         </div>
       )}
 
-      {Object.values(result.results).map(r => (
+      {/* ----------------------------------------------------------- */}
+      {/* DISEASE RESULTS */}
+      {/* ----------------------------------------------------------- */}
+
+      {Object.values(
+        result.results
+      ).map((riskResult, index) => (
 
         <div
-          key={r.disease}
+          key={
+            riskResult.disease ||
+            `disease-${index}`
+          }
           className={`border rounded-md p-4 mb-3 ${
-            categoryStyle[r.risk_category] ||
+            categoryStyle[
+              riskResult.risk_category
+            ] ||
             "bg-white border-stone-300 text-slate-800"
           }`}
         >
 
+          {/* ------------------------------------------------------- */}
+          {/* DISEASE NAME */}
+          {/* ------------------------------------------------------- */}
+
           <p className="font-medium">
-            {r.disease}
+            {riskResult.disease}
           </p>
+
+          {/* ------------------------------------------------------- */}
+          {/* PROBABILITY */}
+          {/* ------------------------------------------------------- */}
 
           <p className="text-sm mt-1">
             Probability:{" "}
-            {(r.probability * 100).toFixed(1)}%
+            {typeof riskResult.probability ===
+            "number"
+              ? (
+                  riskResult.probability *
+                  100
+                ).toFixed(1)
+              : "N/A"}
+            %
           </p>
+
+          {/* ------------------------------------------------------- */}
+          {/* CATEGORY */}
+          {/* ------------------------------------------------------- */}
 
           <p className="text-sm">
             Risk Category:{" "}
-            {r.risk_category}
+            {riskResult.risk_category ||
+              "N/A"}
           </p>
 
-          {r.disclaimer && (
-            <p className="text-xs mt-2 italic">
-              {r.disclaimer}
+          {/* ------------------------------------------------------- */}
+          {/* DATA COMPLETENESS */}
+          {/* ------------------------------------------------------- */}
+
+          {typeof riskResult.data_completeness ===
+            "number" && (
+            <p className="text-xs mt-2 opacity-70">
+              Data completeness:{" "}
+              {riskResult.data_completeness.toFixed(
+                1
+              )}
+              %
             </p>
           )}
 
-          {r.warnings &&
-            r.warnings.length > 0 && (
+          {/* ------------------------------------------------------- */}
+          {/* ESTIMATED FIELDS */}
+          {/* ------------------------------------------------------- */}
+
+          {riskResult.estimated_fields &&
+            riskResult.estimated_fields.length >
+              0 && (
               <div className="mt-2">
 
-                {r.warnings.map(
-                  (warning, index) => (
-                    <p
-                      key={index}
-                      className="text-xs"
-                    >
-                      ⚠ {warning}
-                    </p>
-                  )
-                )}
+                <p className="text-xs font-medium">
+                  Estimated fields:
+                </p>
+
+                <p className="text-xs mt-1 opacity-75">
+                  {riskResult.estimated_fields.join(
+                    ", "
+                  )}
+                </p>
 
               </div>
             )}
 
-                    {r.explanation?.top_factors?.length > 0 && (
+          {/* ------------------------------------------------------- */}
+          {/* DISCLAIMER */}
+          {/* ------------------------------------------------------- */}
+
+          {riskResult.disclaimer && (
+            <p className="text-xs mt-2 italic">
+              {riskResult.disclaimer}
+            </p>
+          )}
+
+        
+
+          {/* ------------------------------------------------------- */}
+          {/* SHAP EXPLANATION */}
+          {/* ------------------------------------------------------- */}
+
+          {riskResult.explanation
+            ?.top_factors
+            ?.length > 0 && (
+
             <div className="mt-3 pt-3 border-t border-current/20">
-              <p className="text-xs font-medium mb-2">Top Contributing Factors</p>
-              <div className="space-y-1.5">
+
+              <p className="text-xs font-medium mb-2">
+                Top Contributing Factors
+              </p>
+
+              <div className="space-y-2">
+
                 {(() => {
-                  const maxImpact = Math.max(...r.explanation.top_factors.map(f => f.impact))
-                  return r.explanation.top_factors.map((factor, i) => (
-                    <div key={i} className="flex items-center gap-2 text-xs">
-                      <span className={factor.direction === "increased" ? "text-rose-600" : "text-emerald-600"}>
-                        {factor.direction === "increased" ? "▲" : "▼"}
-                      </span>
-                      <span className="w-36 truncate flex-shrink-0">{factor.feature}</span>
-                      <div className="flex-1 h-1.5 bg-black/10 rounded-full overflow-hidden">
+                  const factors =
+                    riskResult
+                      .explanation
+                      .top_factors
+
+                  const impactValues =
+                    factors
+                      .map(factor =>
+                        Math.abs(
+                          Number(
+                            factor.impact
+                          ) || 0
+                        )
+                      )
+
+                  const maxImpact =
+                    Math.max(
+                      ...impactValues,
+                      0.000001
+                    )
+
+                  return factors.map(
+                    (factor, factorIndex) => {
+
+                      const impact =
+                        Math.abs(
+                          Number(
+                            factor.impact
+                          ) || 0
+                        )
+
+                      const percentage =
+                        Math.min(
+                          100,
+                          (
+                            impact /
+                            maxImpact
+                          ) * 100
+                        )
+
+                      const increased =
+                        factor.direction ===
+                        "increased"
+
+                      return (
                         <div
-                          className={`h-full rounded-full ${factor.direction === "increased" ? "bg-rose-500" : "bg-emerald-500"}`}
-                          style={{ width: `${(factor.impact / maxImpact) * 100}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))
+                          key={
+                            factorIndex
+                          }
+                          className="flex items-center gap-2 text-xs"
+                        >
+
+                          <span
+                            className={
+                              increased
+                                ? "text-rose-600"
+                                : "text-emerald-600"
+                            }
+                          >
+                            {increased
+                              ? "▲"
+                              : "▼"}
+                          </span>
+
+                          <span className="w-36 truncate flex-shrink-0">
+                            {factor.feature}
+                          </span>
+
+                          <div className="flex-1 h-1.5 bg-black/10 rounded-full overflow-hidden">
+
+                            <div
+                              className={`h-full rounded-full ${
+                                increased
+                                  ? "bg-rose-500"
+                                  : "bg-emerald-500"
+                              }`}
+                              style={{
+                                width: `${percentage}%`
+                              }}
+                            />
+
+                          </div>
+
+                        </div>
+                      )
+                    }
+                  )
                 })()}
+
               </div>
+
             </div>
           )}
 
-          {r.ai_explanation && (
+          {/* ------------------------------------------------------- */}
+          {/* AI EXPLANATION */}
+          {/* ------------------------------------------------------- */}
+
+          {riskResult.ai_explanation && (
             <div className="mt-3 pt-3 border-t border-current/20">
-              <MarkdownLite text={r.ai_explanation} />
-              {r.evidence_sources && r.evidence_sources.length > 0 && (
-                <p className="text-xs mt-2 opacity-70">
-                  Source: {r.evidence_sources.join(", ")}
-                </p>
-              )}
+
+              <p className="text-sm font-semibold text-slate-800 mb-2">
+                AI Explanation & Recommendations
+              </p>
+
+              <MarkdownLite
+                text={
+                  riskResult.ai_explanation
+                }
+              />
+
+              {/* --------------------------------------------------- */}
+              {/* EVIDENCE SOURCES */}
+              {/* --------------------------------------------------- */}
+
+              {riskResult.evidence_sources &&
+                riskResult
+                  .evidence_sources
+                  .length > 0 && (
+
+                  <div className="mt-4 pt-3 border-t border-current/10">
+
+                    <p className="text-xs font-medium">
+                      Evidence Sources
+                    </p>
+
+                    <ul className="text-xs mt-1 space-y-1">
+
+                      {riskResult
+                        .evidence_sources
+                        .map(
+                          (
+                            source,
+                            sourceIndex
+                          ) => (
+                            <li
+                              key={
+                                sourceIndex
+                              }
+                              className="list-disc ml-4"
+                            >
+                              {source}
+                            </li>
+                          )
+                        )}
+
+                    </ul>
+
+                  </div>
+                )}
+
+            </div>
+          )}
+
+          {/* ------------------------------------------------------- */}
+          {/* AI EXPLANATION MISSING */}
+          {/* ------------------------------------------------------- */}
+
+          {!riskResult.ai_explanation && (
+            <div className="mt-3 pt-3 border-t border-current/20">
+
+              <p className="text-xs text-slate-600">
+                AI explanation is not available
+                for this report.
+              </p>
+
             </div>
           )}
 
         </div>
-
       ))}
 
-      <p className="text-xs text-slate-500 mt-4">
-        This is not a medical diagnosis. Please consult a doctor for any
-        health concerns.
-      </p>
+      {/* ----------------------------------------------------------- */}
+      {/* FINAL DISCLAIMER */}
+      {/* ----------------------------------------------------------- */}
+
+      <div className="mt-5 p-4 bg-white border border-stone-200 rounded-md">
+
+        <p className="text-xs text-slate-500">
+          This report is generated using machine-learning
+          predictions and AI-assisted medical information.
+          It is not a medical diagnosis. Please consult a
+          qualified healthcare professional for medical
+          advice, diagnosis, or treatment.
+        </p>
+
+      </div>
 
     </div>
   )
