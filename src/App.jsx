@@ -3,11 +3,10 @@ import axios from 'axios'
 import { supabase } from './supabaseClient'
 import Auth from './Auth'
 
-const API_BASE = "http://127.0.0.1:5000"
+const API_BASE = import.meta.env.VITE_API_BASE || "http://127.0.0.1:5000"
 
-// -----------------------------------------------------------------------
+
 // FIELD MAPPINGS
-// -----------------------------------------------------------------------
 
 function mapGenderToHeart(gender) {
   // Heart dataset uses M/F.
@@ -32,9 +31,7 @@ function mapSmokingToCKD(smokingHistory) {
   return smokingHistory === "current" ? "1" : "0"
 }
 
-// -----------------------------------------------------------------------
 // FIELD CATALOG
-// -----------------------------------------------------------------------
 
 const FIELD_CATALOG = [
   {
