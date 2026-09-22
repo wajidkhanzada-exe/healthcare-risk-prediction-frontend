@@ -1023,6 +1023,8 @@ function App() {
   const [backendUp, setBackendUp] = useState(null)
 
   const [values, setValues] = useState({})
+  const [submittedName, setSubmittedName] = useState("")
+  const [submittedAge, setSubmittedAge] = useState("")
   const [result, setResult] = useState(null)
 
   const [error, setError] = useState(null)
@@ -1267,6 +1269,17 @@ function App() {
       )
 
       setResult(response.data)
+
+      // Capture the patient's name/age BEFORE clearing the form, so
+      // the report below can still display them correctly.
+      setSubmittedName(values.fullName)
+      setSubmittedAge(values.age)
+
+      // Reset the form back to blank so the user can start a fresh
+      // assessment. The generated report stays visible below the
+      // (now empty) form.
+      setValues({})
+      setExtractMessage(null)
 
       // Automatically refresh history after
       // successfully generating/saving a report.
@@ -1602,8 +1615,8 @@ function App() {
             {result && (
               <ResultReport
                 result={result}
-                name={values.fullName}
-                patientAge={values.age}
+                name={submittedName}
+                patientAge={submittedAge}
               />
             )}
 
