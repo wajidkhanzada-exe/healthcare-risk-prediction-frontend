@@ -1176,7 +1176,7 @@ function App() {
         Object.keys(extracted).length === 0
       ) {
         setExtractMessage(
-          "Report se koi field nahi mil saki. Manually fill kar lo."
+          "No fields found in the report. Please fill in the details manually."
         )
       } else {
         setValues(prev => ({
@@ -1185,7 +1185,7 @@ function App() {
         }))
 
         setExtractMessage(
-          `${Object.keys(extracted).length} fields report se bhar diye gaye. Please neeche review karo.`
+          `${Object.keys(extracted).length} fields extracted from the report. Please review and fill in any missing fields.`
         )
       }
     } catch (err) {
@@ -1196,7 +1196,7 @@ function App() {
 
       setExtractMessage(
         err.response?.data?.error ||
-        "Extraction fail hui. Manually fill karo."
+        "Extraction failed. Please fill in the details manually."
       )
     } finally {
       setExtracting(false)
@@ -1339,7 +1339,7 @@ function App() {
 
       setHistoryError(
         err.message ||
-        "Previous reports load nahi ho sake."
+        "Failed to load previous reports."
       )
     } finally {
       setHistoryLoading(false)
@@ -1885,8 +1885,7 @@ function HistoryView({
         </p>
 
         <p className="text-xs text-red-600 mt-3">
-          Agar Supabase RLS error aa raha hai to reports
-          table ke SELECT policy ko check karo.
+          Please check your internet connection and try again.
         </p>
 
       </div>
@@ -1906,7 +1905,7 @@ function HistoryView({
         </p>
 
         <p className="text-sm text-slate-500 mt-2">
-          Abhi tak koi saved report nahi mili.
+          No saved reports found.
         </p>
 
       </div>
