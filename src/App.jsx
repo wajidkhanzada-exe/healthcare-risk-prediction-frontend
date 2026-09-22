@@ -1543,7 +1543,7 @@ function App() {
 
               {extracting && (
                 <p className="text-sm text-teal-700 mt-3">
-                  Report padh rahe hain...
+                  Extracting values from the report...
                 </p>
               )}
 
