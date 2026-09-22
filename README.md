@@ -1,147 +1,102 @@
 # Healthcare Risk Prediction — Frontend
 
-A React application that lets a patient log in, upload lab reports or fill
-in their own health information, and receive an AI-generated risk report
-for Diabetes, Heart Disease, and Chronic Kidney Disease.
+A React interface for the Healthcare Risk Prediction system: a single, category-organized intake form (not three separate per-disease forms), drag-and-drop lab report upload with live field extraction, email-OTP authentication, a results view that surfaces model probability, SHAP-based reasoning, and an AI-generated explanation together, and a browsable history of past assessments.
 
-This is the client for the [Flask backend](#) (separate repository), which
-performs the actual ML predictions and generates the explanations.
+**Live App:** https://healthriskkk-ai.vercel.app/
+**Backend repo:** https://github.com/wajidkhanzada-exe/healthcare-risk-prediction-backend
+**Backend API:** https://healthcare-risk-prediction-backend.vercel.app/
 
 ---
 
 ## Overview
 
-- Passwordless authentication (email + one-time code) via Supabase Auth.
-- A single, deduplicated intake form: each piece of information (age,
-  gender, blood pressure, etc.) is asked once and automatically mapped to
-  whichever disease models need it, instead of repeating the same
-  question three times.
-- Drag-and-drop upload of lab report PDFs/images. Each uploaded file is
-  sent to the backend for extraction, and any fields it finds are merged
-  into the form. Removing an uploaded file also clears exactly the fields
-  that file contributed (unless a later edit or upload has since
-  overwritten them).
-- Submitting generates a full report: risk probability, category
-  (Low/Medium/High), a plain-language explanation, and personalized
-  lifestyle recommendations grounded in official health guidelines.
-- Works correctly with partial information — the backend imputes
-  missing non-critical fields and clearly reports which fields in the
-  result were estimated versus provided by the patient.
+The backend runs three independent disease models (Diabetes, Heart Disease, CKD), each trained on its own dataset with its own feature set. A literal translation of that into UI would be three separate forms — which is what this started as, and what it deliberately isn't anymore.
+
+This frontend's core job is to hide that internal structure from the person filling it in: one form, organized the way a patient actually thinks about their own health data (personal info, vitals, blood sugar, cholesterol, kidney labs, symptoms, history), where an answer given once is silently routed to every disease model that needs it.
+
+---
 
 ## Tech Stack
 
-| Layer | Technology |
+| Layer | Choice |
 |---|---|
-| Framework | React + Vite |
+| Framework | React (Vite) |
 | Styling | Tailwind CSS |
-| Auth | Supabase (`@supabase/supabase-js`), email OTP |
-| HTTP client | Axios |
+| HTTP | Axios |
+| Auth | Supabase Auth (email OTP, no passwords) |
+| Data | Supabase Database (assessment history) |
+| Hosting | Vercel |
+
+---
+
+## Key UI/UX Engineering Decisions
+
+**1. One form, not three.**
+A `FIELD_CATALOG` — a single array of field definitions grouped by medical category — is the one source of truth for the entire form. Each field declares its own `targets`: which disease payload(s) it feeds, and any transform needed to get there (e.g. `Male`/`Female` becomes `M`/`F` for the Heart model, a raw Fasting Blood Sugar reading becomes a `>120` boolean flag for the Heart model but stays a raw number for CKD). Adding, removing, or re-labeling a question is a one-line change in the catalog, not an edit in three different form sections.
+
+**2. Merging fields is not automatic — each merge is a judgment call.**
+Age, Gender, Smoking History, BMI, Systolic BP, HbA1c, and Total Cholesterol are genuinely the same measurement across the diseases that use them, so they're asked once. Diabetes's random blood glucose reading and the fasting blood sugar reading used by Heart/CKD are deliberately **not** merged — they're clinically different measurements, and collapsing them would silently corrupt the data. Where a merge target's encoding was uncertain (CKD's `Gender` column has no published data dictionary), that's called out in a code comment rather than quietly assumed correct — see the backend README's Limitations section.
+
+**3. The form never blocks submission.**
+An earlier version hard-required ~15 fields client-side before allowing submit. That was removed. The backend already imputes missing values and marks a disease as "skipped" with a stated reason when it truly can't produce a reliable result — client-side gatekeeping was duplicating (and fighting) logic the backend already handles correctly. The only remaining client-side guard is refusing a completely empty submission.
+
+**4. Multi-file upload is additive, not destructive.**
+A patient rarely has one report with everything on it — a CBC, a lipid panel, and a kidney panel are normally separate documents. The upload zone (drag-and-drop or click-to-browse) accepts multiple files, extracts each independently via the backend's Gemini-based extractor, and merges results into the form without erasing what's already there. Removing an uploaded file removes only the fields *that file* contributed, tracked per-file rather than as one undifferentiated blob of extracted data.
+
+**5. The results view shows the model's reasoning, not just its output.**
+Each disease's card shows probability and risk category, but also a **SHAP-based "Top Contributing Factors" list** (which fields pushed the risk up or down, and by how much, rendered as small directional bars) alongside the Gemini-generated plain-language explanation. Showing both is intentional: the SHAP factors are the model's actual reasoning; the Gemini text is a readable narrative around it. Neither is presented as a substitute for the other.
+
+**6. Data completeness is surfaced, not hidden.**
+When a result was partly estimated, the card shows `data_completeness` and which specific fields were imputed. A confident-looking percentage with no caveats would be misleading for a system that's explicitly designed to work on partial data.
+
+**7. The form resets on success, not on failure.**
+After a successful submission, all fields and uploaded files clear so the next assessment starts clean — but only on success. A failed request (network error, validation error) never costs the user their entered data.
+
+**8. Assessment history is a first-class feature, not an afterthought.**
+Every completed report is saved (tied to the authenticated user via Supabase) and browsable from a "History" tab — patient name, age, timestamp, and highest-risk summary at a glance, with a full report view and a Print/Save PDF option per entry. This turns the app from a one-off calculator into something a patient can actually track over time.
+
+---
 
 ## Project Structure
 
 ```
-frontend/
-├── src/
-│   ├── App.jsx              # Main app: field catalog, form, upload panel, results
-│   ├── Auth.jsx              # Email + OTP login flow
-│   ├── supabaseClient.js     # Supabase client initialization
-│   └── index.css
-├── .env                       # VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY (not committed)
-├── vite.config.js
-└── package.json
+src/
+  App.jsx         # FIELD_CATALOG, payload builder, upload zone, form, results view
+  Auth.jsx          # Supabase email-OTP sign-in
+  supabaseClient.js  # Supabase client init (reads VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY)
 ```
 
-## Getting Started
+---
 
-### Prerequisites
-- Node.js (LTS)
-- A Supabase project with Email OTP configured (see backend repo notes)
-- The backend API running (locally or deployed)
-
-### Setup
+## Setup
 
 ```bash
 npm install
 ```
 
 Create a `.env` file in the project root:
-
 ```
-VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_URL=your_supabase_project_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
-> The Supabase **anon** key is safe to expose in the frontend by design.
-> Never put the `service_role` key here — that belongs only in the
-> backend's environment.
+> Vite only reads `.env` at dev-server startup. After creating or editing it, restart `npm run dev` — otherwise the values load as `undefined`.
 
-### Run
-
+Run locally:
 ```bash
 npm run dev
 ```
 
-The app runs at `http://localhost:5173` by default and expects the
-backend at `http://127.0.0.1:5000` (configurable via `API_BASE` in
-`App.jsx`).
+By default the app calls the backend at `http://127.0.0.1:5000`. For local development, run the [backend](https://github.com/wajidkhanzada-exe/healthcare-risk-prediction-backend) alongside this, or point `API_BASE` in `App.jsx` at the deployed backend.
 
-## Authentication Flow
+---
 
-1. User enters their email and requests a code (`supabase.auth.signInWithOtp`).
-2. Supabase emails a one-time numeric code.
-3. User enters the code (`supabase.auth.verifyOtp`), which returns a
-   session containing an access token.
-4. That token is attached as a `Bearer` header on every request to the
-   backend's prediction/extraction endpoints.
-5. Session state is kept in sync across page reloads and sign-out via
-   `supabase.auth.onAuthStateChange`.
+## Authentication
 
-## The Field Catalog
+Sign-in uses Supabase's email OTP flow instead of a traditional password: the user enters their email, receives a one-time code, and enters it to unlock the assessment form. Note that Supabase's OTP code length is a per-project mailer setting (`GOTRUE_MAILER_OTP_LENGTH`) and isn't guaranteed to be 6 digits — this project's default sends 8-digit codes, so the OTP input isn't hardcoded to a specific length.
 
-All patient-facing fields are defined once in a single `FIELD_CATALOG`
-array in `App.jsx`, grouped by medical category (Personal Information,
-Body Measurements, Blood Pressure, Blood Sugar, Cholesterol, Kidney
-Function Labs, Symptoms, Medical History). Each field declares:
+---
 
-- Its input type, valid range, and whether it's required.
-- A `targets` list describing which disease(s) it feeds into and any
-  unit/format conversion needed (e.g. converting a fasting blood sugar
-  reading into the binary flag the heart model expects).
+## Disclaimer
 
-This means adding, removing, or relabeling a field only requires editing
-one entry, and it is guaranteed to reach every relevant disease payload
-correctly and consistently.
-
-## Report Upload & Extraction
-
-- Supports multiple files, click-to-browse or drag-and-drop.
-- Each file shows a live status: processing, N fields extracted, no
-  fields found, or failed.
-- A `fieldOwners` map tracks which uploaded file most recently supplied
-  each field's value, so removing a file only clears the fields it is
-  still responsible for — fields a user has since edited by hand, or
-  that a later upload has overwritten, are left untouched.
-
-## Result Display
-
-Each disease's card shows:
-
-- Risk probability and category, color-coded (green/amber/red).
-- Any out-of-training-range warnings.
-- Data completeness and which fields were estimated, if any.
-- The Gemini-generated explanation and recommendations, with the source
-  document(s) cited.
-- Any disease-specific reliability disclaimer (e.g. for CKD).
-
-A summary banner highlights the single highest-risk condition, and a
-persistent footer note reminds the user this is not a medical diagnosis.
-
-## Known Limitations
-
-- The mapping of `Gender` to the CKD model's numeric encoding
-  (Male → 1, Female → 0) is an assumption based on scikit-learn's default
-  label encoding and has not been independently verified against the
-  original training notebook.
-- Free-tier Gemini quotas can cause the report generation step to be
-  temporarily unavailable; the backend retries automatically, but a
-  request may still occasionally fail during periods of high demand.
+This application produces probabilistic risk estimates from models trained on public and synthetic datasets. It is not a diagnostic tool and does not replace professional medical advice — this is shown to the user on every report.
